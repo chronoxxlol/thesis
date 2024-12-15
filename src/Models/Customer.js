@@ -7,4 +7,4 @@ const customerSchema = new mongoose.Schema({
   deleted_at: { type: Date, required: false },
 });
 
-module.exports = mongoose.model('Customer', customerSchema);
+module.exports = customerSchema;

@@ -53,6 +53,7 @@ async function getCampaign(req, res) {
 
   const connection = createConnection(accountData.db_name);
   const campaignModel = connection.model("Campaign", Campaign);
+  const campaignDetailModel = connection.model("CampaignDetail", CampaignDetail);
   try {
     const { page = 1, limit = 10, search = '', status } = req.query;
     const query = { created_by: accountId, deleted_at: null };
@@ -71,7 +72,7 @@ async function getCampaign(req, res) {
 
     const campaignsWithDetails = await Promise.all(
       campaigns.map(async (campaign) => {
-        const campaignDetails = await CampaignDetail.find({ campaign_id: campaign._id });
+        const campaignDetails = await campaignDetailModel.find({ campaign_id: campaign._id });
 
         const detailStatusSummary = campaignDetails.reduce((acc, detail) => {
           acc[detail.status] = (acc[detail.status] || 0) + 1;
