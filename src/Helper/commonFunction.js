@@ -21,7 +21,7 @@ function createConnection(
     connectTimeoutMS: 40000,
   }
 ) {
-  let dbConnection = `mongodb://localhost:27017/${dbName}?authSource=admin`;
+  let dbConnection = `mongodb+srv://joel:internship@testcluster.ngs8zbl.mongodb.net/${dbName}?retryWrites=true&w=majority&appName=testCluster&authSource=admin`;
   const connections = mongoose.createConnection(dbConnection, options);
 
   return connections;

@@ -11,7 +11,7 @@ const campaignDetailRoute = require("./src/CampaignDetail/Route");
 dotenv.config();
 
 //Connect to DB
-mongoose.connect(`mongodb://localhost:27017/global?authSource=admin`, {
+mongoose.connect(`mongodb+srv://joel:internship@testcluster.ngs8zbl.mongodb.net/global?retryWrites=true&w=majority&appName=testCluster&authSource=admin`, {
   socketTimeoutMS: 40000,
   connectTimeoutMS: 40000,
 })
