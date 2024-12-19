@@ -92,13 +92,13 @@ async function getAccountByID(req, res) {
 
 async function createAccount(req, res) {
   try {
-    const { name, email, balance } = req.body;
+    const { name, username, email, balance } = req.body;
 
-    if (!name || !email) {
-      return res.status(400).json({ message: 'Account name and email are required.' });
-    }
+    if(!name) return res.status(400).json({ message: `Name is required!` });
+    else if(!email) return res.status(400).json({ message: `Email is required!` });
+    else if(!username) return res.status(400).json({ message: `Username is required!` })
 
-    const globalDb = await createConnection("global");
+    const globalDb = createConnection("global");
     const accountModel = globalDb.model("Account", Account);
 
     const existingAccount = await accountModel.findOne({ name: name });
@@ -112,6 +112,7 @@ async function createAccount(req, res) {
     const newAccount = new accountModel({
       name,
       email,
+      username,
       db_name: formattedName,
       balance: balance || 0,
       created_by: req.user.id
@@ -167,6 +168,25 @@ async function registerAdmin(req, res) {
   }
 };
 
+async function getAdmin(req, res) {
+  const globalDb = createConnection("global");
+  const adminModel = globalDb.model("Admin", Admin);
+
+  try{
+    let adminId = req.params.adminId
+    const admin = await adminModel.findOne({ _id: adminId }, { password: 0 });
+
+    if(!admin) return res.status(404).json({ message: 'Admin not found!' });
+
+    res.status(201).json({
+      data: admin
+    })
+  }catch(error){
+    console.error('Error getting admin data:', error);
+    res.status(500).json({ message: 'Internal server error.' });
+  }
+}
+
 async function login(req, res) {
   try {
     const { email, password } = req.body;
@@ -175,7 +195,7 @@ async function login(req, res) {
       return res.status(400).json({ message: 'Email and password are required.' });
     }
 
-    const globalDb = await createConnection("global");
+    const globalDb = createConnection("global");
     const adminModel = globalDb.model("Admin", Admin);
     const user = await adminModel.findOne({ email });
     if (!user) {
@@ -211,7 +231,12 @@ async function generateAccount(req, res) {
       balance: faker.finance.amount(0, 10000, 0),
     };
 
-    const globalDb = await createConnection("global");
+    const username = fakeAccount.name.replace(/\s+/g, '_').toLowerCase();
+    if (username.length > 20) {
+      username = username.slice(0, 20);
+    }
+
+    const globalDb = createConnection("global");
     const accountModel = globalDb.model("Account", Account);
 
     const existingAccount = await accountModel.findOne({ name: fakeAccount.name });
@@ -220,18 +245,19 @@ async function generateAccount(req, res) {
     }
 
     const formattedDate = moment().format('YYYY_MM_DD');
-    const formattedName = `${fakeAccount.name.replace(/\s+/g, '_')}_${formattedDate}`;
+    const dbName = `${username}_${formattedDate}`;
 
     const newAccount = new accountModel({
       name: fakeAccount.name,
+      username: username,
       email: fakeAccount.email,
-      db_name: formattedName,
+      db_name: dbName,
       balance: fakeAccount.balance,
       created_by: req.user.id,
     });
 
     let [connection] = await Promise.all([
-      createConnection(formattedName),
+      createConnection(dbName),
       newAccount.save(),
     ]);
 
@@ -275,6 +301,7 @@ module.exports = {
   getAllAccounts,
   getAccountByID,
   registerAdmin,
+  getAdmin,
   login,
   createAccount,
   generateAccount,

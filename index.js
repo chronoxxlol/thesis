@@ -8,6 +8,7 @@ const cors = require('cors');
 const accountRoute = require("./src/Account/Route");
 const campaignRoute = require("./src/Campaign/Route");
 const campaignDetailRoute = require("./src/CampaignDetail/Route");
+const machineLearningRoute = require("./src/MachineLearning/Route")
 dotenv.config();
 
 //Connect to DB
@@ -27,6 +28,7 @@ app.use(cors());
 app.use("/api/v1/account", accountRoute);
 app.use("/api/v1/campaign", campaignRoute);
 app.use("/api/v1/campaign-detail", campaignDetailRoute);
+app.use("/api/v1/machine-learning", machineLearningRoute);
 
 app.listen(5000, () => console.log("Server Up And Running"));
 module.exports = app;

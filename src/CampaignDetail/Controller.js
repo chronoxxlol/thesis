@@ -10,9 +10,11 @@ async function generateCampaignDetail(req, res) {
   let accountId = req.query.account_id;
   const connectionGlobal = createConnection("global");
   const accountModel = connectionGlobal.model("Account", Account);
+  if(!accountId) return res.status(404).json({ message: 'Account ID not provided!' });
 
   let accountData = await accountModel.findOne({ _id: accountId }).lean();
-
+  if(!accountData) return res.status(404).json({ message: 'Account not found!' });
+  
   const connection = createConnection(accountData.db_name);
   const campaignModel = connection.model("Campaign", Campaign);
   const campaignDetailModel = connection.model("CampaignDetail", CampaignDetail)
@@ -38,14 +40,30 @@ async function generateCampaignDetail(req, res) {
     const scheduleDate = getCampaign.schedule ? new Date(getCampaign.schedule) : new Date();
     const startGenerateDate = scheduleDate > new Date() ? scheduleDate : new Date();
 
-    const statuses = ['Pending', 'Sent', 'Failed', 'Delivered', 'Read'];
+    const regions = [
+      "Jakarta",
+      "Bali",
+      "Yogyakarta",
+      "Bandung",
+      "Surabaya",
+      "Medan",
+      "Makassar",
+      "Palembang",
+      "Semarang",
+      "Batam",
+      "Padang",
+      "Pekanbaru",
+    ];
+
     const details = customers.map((customer) => ({
       campaign_id,
       recipient: customer.phone,
+      region: regions[Math.floor(Math.random() * regions.length)],
       name: customer.name,
       message: getCampaign.template,
-      status: statuses[Math.floor(Math.random() * statuses.length)],
+      status: 'Pending',
       created_at: getRandomdate(startGenerateDate),
+      updated_at: null,
     }));
 
     const createdDetails = await campaignDetailModel.insertMany(details);
@@ -57,12 +75,58 @@ async function generateCampaignDetail(req, res) {
   }
 };
 
+async function updateStatusCampaignDetail(req, res) {
+  let accountId = req.query.account_id;
+  const connectionGlobal = createConnection("global");
+  const accountModel = connectionGlobal.model("Account", Account);
+  if(!accountId) return res.status(404).json({ message: 'Account ID not provided!' });
+
+  let accountData = await accountModel.findOne({ _id: accountId }).lean();
+  if(!accountData) return res.status(404).json({ message: 'Account not found!' });
+
+  const connection = createConnection(accountData.db_name);
+  const campaignDetailModel = connection.model("CampaignDetail", CampaignDetail);
+
+  try {
+    const campaignId = req.params.campaignId
+    const statuses = ["Sent", "Failed", "Delivered", "Read"];
+    const pendingDetails = await campaignDetailModel.find({ status: "Pending", campaign_id: campaignId});
+
+    if (pendingDetails.length === 0) {
+      return res.status(404).json({ message: "No pending campaign details found." });
+    }
+
+    const updatedDetails = await Promise.all(
+      pendingDetails.map((detail) =>
+        campaignDetailModel.findByIdAndUpdate(
+          detail._id,
+          {
+            status: statuses[Math.floor(Math.random() * statuses.length)],
+            updated_at: new Date(),
+          },
+          { new: true }
+        )
+      )
+    );
+
+    res.status(200).json({
+      message: "Campaign details status updated successfully.",
+      details: updatedDetails,
+    });
+  } catch (error) {
+    console.error("Error randomizing campaign detail status:", error);
+    res.status(500).json({ message: "Internal server error." });
+  }
+}
+
 async function getCampaignDetail(req, res) {
   let accountId = req.query.account_id;
   const connectionGlobal = createConnection("global");
   const accountModel = connectionGlobal.model("Account", Account);
+  if(!accountId) return res.status(404).json({ message: 'Account ID not provided!' });
 
   let accountData = await accountModel.findOne({ _id: accountId }).lean();
+  if(!accountData) return res.status(404).json({ message: 'Account not found!' });
 
   const connection = createConnection(accountData.db_name);
   const campaignModel = connection.model("Campaign", Campaign);
@@ -111,5 +175,6 @@ async function getCampaignDetail(req, res) {
 
 module.exports = {
   generateCampaignDetail,
+  updateStatusCampaignDetail,
   getCampaignDetail,
 }

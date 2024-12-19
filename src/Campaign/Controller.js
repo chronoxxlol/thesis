@@ -47,9 +47,12 @@ async function createCampaign(req, res) {
 
 async function getCampaign(req, res) {
   let accountId = req.query.account_id;
-  const connectionGlobal = createConnection("global")
+  const connectionGlobal = createConnection("global");
   const accountModel = connectionGlobal.model("Account", Account);
-  let accountData = await accountModel.findOne({_id: accountId}).lean();
+  if(!accountId) return res.status(404).json({ message: 'Account ID not provided!' });
+
+  let accountData = await accountModel.findOne({ _id: accountId }).lean();
+  if(!accountData) return res.status(404).json({ message: 'Account not found!' });
 
   const connection = createConnection(accountData.db_name);
   const campaignModel = connection.model("Campaign", Campaign);
@@ -111,9 +114,12 @@ async function getCampaign(req, res) {
 
 async function deleteCampaign(req, res) {
   let accountId = req.query.account_id;
-  const connectionGlobal = createConnection("global")
+  const connectionGlobal = createConnection("global");
   const accountModel = connectionGlobal.model("Account", Account);
-  let accountData = await accountModel.findOne({_id: accountId}).lean();
+  if(!accountId) return res.status(404).json({ message: 'Account ID not provided!' });
+
+  let accountData = await accountModel.findOne({ _id: accountId }).lean();
+  if(!accountData) return res.status(404).json({ message: 'Account not found!' });
 
   const connection = createConnection(accountData.db_name);
   const campaignModel = connection.model("Campaign", Campaign);
@@ -141,8 +147,10 @@ async function generateCampaign(req, res) {
   let accountId = req.query.account_id;
   const connectionGlobal = createConnection("global");
   const accountModel = connectionGlobal.model("Account", Account);
+  if(!accountId) return res.status(404).json({ message: 'Account ID not provided!' });
 
   let accountData = await accountModel.findOne({ _id: accountId }).lean();
+  if(!accountData) return res.status(404).json({ message: 'Account not found!' });
 
   const connection = createConnection(accountData.db_name);
   const campaignModel = connection.model("Campaign", Campaign);

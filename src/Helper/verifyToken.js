@@ -14,7 +14,7 @@ module.exports = async function (req, res, next) {
     const verified = jwt.verify(token, process.env.JWT_SECRET);
     req.user = verified;
 
-    const globalDb = await createConnection('global');
+    const globalDb = createConnection('global');
     const adminModel = globalDb.model('Admin', Admin);
 
     const admins = await adminModel.find({ _id: verified.id });

@@ -4,6 +4,7 @@ const {
   getAllAccounts,
   getAccountByID,
   registerAdmin,
+  getAdmin,
   login,
   createAccount,
   generateAccount,
@@ -13,6 +14,7 @@ const {
 
 router.get("/get", verify, getAllAccounts);
 router.get("/get/:accId", verify, getAccountByID);
+router.get("/get-admin/:adminId", verify, getAdmin);
 router.get("/generate-account", verify, generateAccount);
 router.post("/create", verify, createAccount);
 router.post("/login", login);
