@@ -103,7 +103,7 @@ async function getCampaign(req, res) {
       data: campaignsWithDetails,
       total: totalCampaigns,
       page: page,
-      totalPages: Math.ceil(totalCampaigns / page),
+      totalPages: Math.ceil(totalCampaigns / limit),
       limit: limit,
     });
   } catch (err) {
