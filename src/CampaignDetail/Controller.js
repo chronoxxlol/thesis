@@ -37,6 +37,10 @@ async function generateCampaignDetail(req, res) {
       return res.status(400).json({ message: 'Campaign has no customers.' });
     }
 
+    const existingDetailsCount = await campaignDetailModel.countDocuments({ campaign_id });
+    if (existingDetailsCount === customers.length) {
+      return res.status(400).json({ message: 'Campaign already has details for all customers.' });
+    }
     const scheduleDate = getCampaign.schedule ? new Date(getCampaign.schedule) : new Date();
     const startGenerateDate = scheduleDate > new Date() ? scheduleDate : new Date();
 

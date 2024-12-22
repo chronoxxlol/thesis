@@ -46,58 +46,90 @@ async function createCampaign(req, res) {
 }
 
 async function getCampaign(req, res) {
-  let accountId = req.query.account_id;
   const connectionGlobal = createConnection("global");
   const accountModel = connectionGlobal.model("Account", Account);
-  if(!accountId) return res.status(404).json({ message: 'Account ID not provided!' });
 
-  let accountData = await accountModel.findOne({ _id: accountId }).lean();
-  if(!accountData) return res.status(404).json({ message: 'Account not found!' });
-
-  const connection = createConnection(accountData.db_name);
-  const campaignModel = connection.model("Campaign", Campaign);
-  const campaignDetailModel = connection.model("CampaignDetail", CampaignDetail);
   try {
-    const { page = 1, limit = 10, search = '', status } = req.query;
-    const query = { created_by: accountId, deleted_at: null };
+    const { account_id: accountId, page = 1, limit = 10, search = '', status } = req.query;
+    let accountIds = [];
 
-    if (search) {
-      query.name = { $regex: search, $options: 'i' };
+    if (accountId) {
+      accountIds = [accountId];
+    } else {
+      const accounts = await accountModel.find({ created_by: req.user.id }).lean();
+      if (!accounts.length) {
+        return res.status(404).json({ message: 'No accounts found for the provided user!' });
+      }
+      accountIds = accounts.map(account => account._id);
     }
 
-    if (status) {
-      query.status = { $regex: status, $options: 'i' };
-    }
+    const allCampaigns = [];
+    const campaignDetailsByCampaignId = {};
+    const dbConnections = new Map();
 
-    const campaigns = await campaignModel.find(query)
-      .skip((page - 1) * limit)
-      .limit(limit);
+    await Promise.all(
+      accountIds.map(async (id) => {
+        const accountData = await accountModel.findOne({ _id: id }).lean();
+        if (!accountData) return;
 
-    const campaignsWithDetails = await Promise.all(
-      campaigns.map(async (campaign) => {
-        const campaignDetails = await campaignDetailModel.find({ campaign_id: campaign._id });
+        let connection;
+        if (dbConnections.has(accountData.db_name)) {
+          connection = dbConnections.get(accountData.db_name);
+        } else {
+          connection = createConnection(accountData.db_name);
+          dbConnections.set(accountData.db_name, connection);
+        }
 
-        const detailStatusSummary = campaignDetails.reduce((acc, detail) => {
-          acc[detail.status] = (acc[detail.status] || 0) + 1;
-          return acc;
-        }, {});
+        const campaignModel = connection.model("Campaign", Campaign);
+        const campaignDetailModel = connection.model("CampaignDetail", CampaignDetail);
 
-        return {
-          campaign_id: campaign._id,
-          name: campaign.name,
-          status: campaign.status,
-          customer: Object.keys(campaign.customers || {}).length,
-          template: campaign.template,
-          schedule: campaign.schedule,
-          phone_sender: campaign.phone_sender,
-          created_at: campaign.created_at,
-          detailCount: campaignDetails.length,
-          detailStatuses: detailStatusSummary,
-        };
+        const query = { created_by: id, deleted_at: null };
+        if (search) {
+          query.name = { $regex: search, $options: 'i' };
+        }
+        if (status) {
+          query.status = { $regex: status, $options: 'i' };
+        }
+
+        const campaigns = await campaignModel.find(query);
+        allCampaigns.push(...campaigns);
+
+        const campaignIds = campaigns.map(campaign => campaign._id);
+        const campaignDetails = await campaignDetailModel.find({ campaign_id: { $in: campaignIds } });
+
+        campaignDetails.forEach((detail) => {
+          if (!campaignDetailsByCampaignId[detail.campaign_id]) {
+            campaignDetailsByCampaignId[detail.campaign_id] = [];
+          }
+          campaignDetailsByCampaignId[detail.campaign_id].push(detail);
+        });
       })
     );
 
-    const totalCampaigns = await campaignModel.countDocuments({ created_by: accountId });
+    const totalCampaigns = allCampaigns.length;
+    const paginatedCampaigns = allCampaigns.slice((page - 1) * limit, page * limit);
+
+    const campaignsWithDetails = paginatedCampaigns.map((campaign) => {
+      const campaignDetails = campaignDetailsByCampaignId[campaign._id] || [];
+
+      const detailStatusSummary = campaignDetails.reduce((acc, detail) => {
+        acc[detail.status] = (acc[detail.status] || 0) + 1;
+        return acc;
+      }, {});
+
+      return {
+        campaign_id: campaign._id,
+        name: campaign.name,
+        status: campaign.status,
+        customer: Object.keys(campaign.customers || {}).length,
+        template: campaign.template,
+        schedule: campaign.schedule,
+        phone_sender: campaign.phone_sender,
+        created_at: campaign.created_at,
+        detailCount: campaignDetails.length,
+        detailStatuses: detailStatusSummary,
+      };
+    });
 
     return res.json({
       data: campaignsWithDetails,

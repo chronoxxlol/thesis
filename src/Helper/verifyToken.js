@@ -17,7 +17,7 @@ module.exports = async function (req, res, next) {
     const globalDb = createConnection('global');
     const adminModel = globalDb.model('Admin', Admin);
 
-    const admins = await adminModel.find({ _id: verified.id });
+    const admins = await adminModel.findOne({ _id: verified.id });
     if (!admins || admins.length === 0) {
       return res.status(404).json({ message: 'No accounts found for this user.' });
     }
