@@ -37,6 +37,17 @@ async function generateCampaignDetail(req, res) {
       return res.status(400).json({ message: 'Campaign has no customers.' });
     }
 
+    const customerCount = customers.length;
+    const deduction = customerCount * 10;
+    if (accountData.balance < deduction) {
+      return res.status(400).json({ message: 'Insufficient balance to generate campaign details.' });
+    }
+
+    await accountModel.updateOne(
+      { _id: accountId },
+      { $inc: { balance: -deduction } }
+    );
+
     const existingDetailsCount = await campaignDetailModel.countDocuments({ campaign_id });
     if (existingDetailsCount === customers.length) {
       return res.status(400).json({ message: 'Campaign already has details for all customers.' });
@@ -61,9 +72,9 @@ async function generateCampaignDetail(req, res) {
 
     const details = customers.map((customer) => ({
       campaign_id,
+      name: customer.name,
       recipient: customer.phone,
       region: regions[Math.floor(Math.random() * regions.length)],
-      name: customer.name,
       message: getCampaign.template,
       status: 'Pending',
       created_at: getRandomdate(startGenerateDate),
@@ -137,6 +148,7 @@ async function getCampaignDetail(req, res) {
   const campaignDetailModel = connection.model("CampaignDetail", CampaignDetail);
   try {
     const { campaignId } = req.params;
+    const { value, order, sort, page = 1, limit = 5 } = req.query;
 
     const campaign = await campaignModel.findOne({ _id: campaignId, deleted_at: null });
 
@@ -144,7 +156,23 @@ async function getCampaignDetail(req, res) {
       return res.status(404).json({ message: 'Campaign not found.' });
     }
 
-    const campaignDetails = await campaignDetailModel.find({ campaign_id: campaignId });
+    const query = { campaign_id: campaignId };
+    if (value) {
+      query.$or = [
+        { region: { $regex: value, $options: 'i' } },
+        { name: { $regex: value, $options: 'i' } },
+        { recipient: { $regex: value, $options: 'i' } },
+      ];
+    }
+    const sortObject = {};
+    if (order && (sort === '1' || sort === '-1')) {
+      sortObject[order] = parseInt(sort);
+    }
+    const campaignDetails = await campaignDetailModel.find(query).sort(sortObject);
+    const totalDetails = campaignDetails.length;
+    const totalPages = Math.ceil(totalDetails / limit);
+
+    const paginatedDetails = campaignDetails.slice((page - 1) * limit, page * limit);
 
     const customersCount = Object.keys(campaign.customers || {}).length;
 
@@ -163,12 +191,20 @@ async function getCampaignDetail(req, res) {
         phone_sender: campaign.phone_sender,
         created_at: campaign.created_at,
       },
-      details: campaignDetails.map((detail) => ({
-        customer: detail.customer,
+      details: paginatedDetails.map((detail) => ({
+        customer: detail.name,
+        recipient: detail.recipient,
         status: detail.status,
         message: detail.message,
+        region: detail.region,
         created_at: detail.created_at,
       })),
+      pagination: {
+        totalDetails,
+        totalPages,
+        page: parseInt(page, 10),
+        limit: parseInt(limit, 10),
+      },
       detailStatuses: detailStatusSummary,
     });
   } catch (err) {

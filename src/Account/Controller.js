@@ -135,11 +135,11 @@ async function registerAdmin(req, res) {
   try {
     const { username, email, password } = req.body;
 
-    if (!username || !email || !password) {
-      return res.status(400).json({ message: 'All fields are required.' });
-    }
+    if (!username) return res.status(400).json({ message: 'Username field is required.' });
+    if (!email) return res.status(400).json({ message: 'Email field is required.' });
+    if (!password) return res.status(400).json({ message: 'Password field is required.' });
 
-    const globalDb = await createConnection('global');
+    const globalDb = createConnection('global');
     const adminModel = globalDb.model("Admin", Admin);
 
     const existingAdmin = await adminModel.findOne({ email });

@@ -15,15 +15,13 @@ async function createCampaign(req, res) {
   let accountData = await accountModel.findOne({_id: accountId}).lean();
 
   const connection = createConnection(accountData.db_name);
-  const campaignModel = await connection.model("Campaign", Campaign);
+  const campaignModel = connection.model("Campaign", Campaign);
   try {
     const { name, customers, template, schedule, phone_sender } = req.body;
 
     if (!name || !customers || !template) {
       return res.status(400).json({ message: 'Name, audience, and template are required.' });
     }
-
-    console.log(accountData)
 
     const newCampaign = new campaignModel({
       name,
@@ -50,7 +48,7 @@ async function getCampaign(req, res) {
   const accountModel = connectionGlobal.model("Account", Account);
 
   try {
-    const { account_id: accountId, page = 1, limit = 10, search = '', status } = req.query;
+    const { account_id: accountId, page = 1, limit = 10, value, order, sort } = req.query;
     let accountIds = [];
 
     if (accountId) {
@@ -84,14 +82,18 @@ async function getCampaign(req, res) {
         const campaignDetailModel = connection.model("CampaignDetail", CampaignDetail);
 
         const query = { created_by: id, deleted_at: null };
-        if (search) {
-          query.name = { $regex: search, $options: 'i' };
+        if (value) {
+          query.$or = [
+            { name: { $regex: value, $options: 'i' } },
+            { template: { $regex: value, $options: 'i' } },
+            { status: { $regex: value, $options: 'i' } },
+          ];
         }
-        if (status) {
-          query.status = { $regex: status, $options: 'i' };
+        const sortObject = {};
+        if (order && (sort === '1' || sort === '-1')) {
+          sortObject[order] = parseInt(sort);
         }
-
-        const campaigns = await campaignModel.find(query);
+        const campaigns = await campaignModel.find(query).sort(sortObject);
         allCampaigns.push(...campaigns);
 
         const campaignIds = campaigns.map(campaign => campaign._id);
