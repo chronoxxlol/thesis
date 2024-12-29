@@ -56,7 +56,7 @@ async function getCampaign(req, res) {
     } else {
       const accounts = await accountModel.find({ created_by: req.user.id }).lean();
       if (!accounts.length) {
-        return res.status(404).json({ message: 'No accounts found for the provided user!' });
+        return res.status(404).json({ message: 'No accounts found.' });
       }
       accountIds = accounts.map(account => account._id);
     }

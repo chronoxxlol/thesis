@@ -101,7 +101,7 @@ async function createAccount(req, res) {
     const globalDb = createConnection("global");
     const accountModel = globalDb.model("Account", Account);
 
-    const existingAccount = await accountModel.findOne({ name: name });
+    const existingAccount = await accountModel.findOne({ email: email });
     if (existingAccount) {
       return res.status(400).json({ message: 'Account already exists.' });
     }
@@ -115,7 +115,8 @@ async function createAccount(req, res) {
       username,
       db_name: formattedName,
       balance: balance || 0,
-      created_by: req.user.id
+      created_by: req.user.id,
+      deleted_at: null
     });
 
     let [connection] = await Promise.all([
@@ -254,6 +255,7 @@ async function generateAccount(req, res) {
       db_name: dbName,
       balance: fakeAccount.balance,
       created_by: req.user.id,
+      deleted_at: null
     });
 
     let [connection] = await Promise.all([
@@ -280,7 +282,7 @@ async function deleteAccount(req, res) {
     const account = await accountModel.findOne({ _id: req.params.accId, created_by: req.user.id });
 
     if (!account) {
-      return res.status(404).json({ message: 'Account not found or access denied.' });
+      return res.status(404).json({ message: 'Account not found.' });
     }
 
     if (account.deleted_at) {
