@@ -89,11 +89,9 @@ async function getCampaign(req, res) {
             { status: { $regex: value, $options: 'i' } },
           ];
         }
-        const sortObject = {};
-        if (order && (sort === '1' || sort === '-1')) {
-          sortObject[order] = parseInt(sort);
-        }
-        const campaigns = await campaignModel.find(query).sort(sortObject);
+
+        // Fetch campaigns for this account
+        const campaigns = await campaignModel.find(query).lean();
         allCampaigns.push(...campaigns);
 
         const campaignIds = campaigns.map(campaign => campaign._id);
@@ -108,9 +106,23 @@ async function getCampaign(req, res) {
       })
     );
 
+    // Sort allCampaigns globally based on the "order" and "sort" query parameters
+    if (order && (sort === '1' || sort === '-1')) {
+      const sortDirection = parseInt(sort, 10); // 1 for ascending, -1 for descending
+      allCampaigns.sort((a, b) => {
+        if (sortDirection === 1) {
+          return new Date(a[order]) - new Date(b[order]);
+        } else {
+          return new Date(b[order]) - new Date(a[order]);
+        }
+      });
+    }
+
+    // Pagination after sorting
     const totalCampaigns = allCampaigns.length;
     const paginatedCampaigns = allCampaigns.slice((page - 1) * limit, page * limit);
 
+    // Add campaign details
     const campaignsWithDetails = paginatedCampaigns.map((campaign) => {
       const campaignDetails = campaignDetailsByCampaignId[campaign._id] || [];
 
@@ -145,6 +157,7 @@ async function getCampaign(req, res) {
     res.status(500).send({ message: 'Unable to fetch data. Please try again.' });
   }
 }
+
 
 async function deleteCampaign(req, res) {
   let accountId = req.query.account_id;
