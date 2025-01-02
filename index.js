@@ -28,5 +28,5 @@ app.use("/api/v1/account", accountRoute);
 app.use("/api/v1/campaign", campaignRoute);
 app.use("/api/v1/campaign-detail", campaignDetailRoute);
 
-app.listen(5000, () => console.log("Server Up And Running"));
+app.listen(5001, () => console.log("Server Up And Running"));
 module.exports = app;
