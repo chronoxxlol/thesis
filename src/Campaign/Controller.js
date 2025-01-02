@@ -128,6 +128,7 @@ async function getCampaign(req, res) {
         schedule: campaign.schedule,
         phone_sender: campaign.phone_sender,
         created_at: campaign.created_at,
+        deleted_at: campaign.deleted_at,
         detailCount: campaignDetails.length,
         detailStatuses: detailStatusSummary,
       };

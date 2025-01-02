@@ -9,7 +9,7 @@ const campaignSchema = new mongoose.Schema({
     phone_sender: { type: String, required: false },
     created_by: { type: String, required: true },
     created_at: { type: Date, default: Date.now },
-    deleted_at: { type: Date, default: null },
+    deleted_at: { type: Date, required: false },
   });
 
 module.exports = campaignSchema;

@@ -12,12 +12,28 @@ async function getAllAccounts(req, res) {
   const connection = createConnection("global")
   const accountModel = await connection.model("Account", Account);
   try {
-    const { page = 1, limit = 10 } = req.query;
+    const { page = 1, limit = 10, value, order, sort } = req.query;
+
+    const sortObject = {};
+    if (order && (sort === '1' || sort === '-1')) {
+      sortObject[order] = parseInt(sort);
+    }
+
+    const query = { created_by: req.user.id, deleted_at: null };
+    if (value) {
+      query.$or = [
+        { name: { $regex: value, $options: 'i' } },
+        { username: { $regex: value, $options: 'i' } },
+        { email: { $regex: value, $options: 'i' } },
+      ];
+    }
+    
     let [accounts, totalAccounts] = await Promise.all([
-      accountModel.find({created_by: req.user.id})
+      accountModel.find(query)
         .skip((page - 1) * limit)
-        .limit(limit),
-      accountModel.find({created_by: req.user.id}).countDocuments()
+        .limit(limit)
+        .sort(sortObject),
+      accountModel.find(query).countDocuments()
     ]) 
 
     const accountsWithCampaigns = await Promise.all(
@@ -25,7 +41,7 @@ async function getAllAccounts(req, res) {
         const accountConnection = await createConnection(account.db_name);
         const campaignModel = accountConnection.model("Campaign", Campaign);
 
-        const campaigns = await campaignModel.find({ created_by: account._id });
+        const campaigns = await campaignModel.find({ created_by: account._id, deleted_at: null});
 
         const statusSummary = campaigns.reduce((acc, campaign) => {
           acc[campaign.status] = (acc[campaign.status] || 0) + 1;
@@ -60,7 +76,7 @@ async function getAccountByID(req, res) {
   const accountModel = connection.model("Account", Account);
 
   try {
-    const account = await accountModel.findOne({ _id: req.params.accId, created_by: req.user.id });
+    const account = await accountModel.findOne({ _id: req.params.accId, created_by: req.user.id, deleted_at: null });
     if (!account) {
       return res.status(404).json({ message: 'Account not found.' });
     }
@@ -226,29 +242,29 @@ async function login(req, res) {
 
 async function generateAccount(req, res) {
   try {
-    const fakeAccount = {
+    let fakeAccount = {
       name: faker.company.name(),
       email: faker.internet.email(),
       balance: faker.finance.amount(0, 10000, 0),
     };
 
-    const username = fakeAccount.name.replace(/\s+/g, '_').toLowerCase();
+    let username = fakeAccount.name.replace(/\s+/g, '_').toLowerCase();
     if (username.length > 20) {
       username = username.slice(0, 20);
     }
 
-    const globalDb = createConnection("global");
-    const accountModel = globalDb.model("Account", Account);
+    let globalDb = createConnection("global");
+    let accountModel = globalDb.model("Account", Account);
 
-    const existingAccount = await accountModel.findOne({ name: fakeAccount.name });
+    let existingAccount = await accountModel.findOne({ name: fakeAccount.name });
     if (existingAccount) {
       return res.status(400).json({ message: 'Account with the same name already exists.' });
     }
 
-    const formattedDate = moment().format('YYYY_MM_DD');
-    const dbName = `${username}_${formattedDate}`;
+    let formattedDate = moment().format('YYYY_MM_DD');
+    let dbName = `${username}_${formattedDate}`;
 
-    const newAccount = new accountModel({
+    let newAccount = new accountModel({
       name: fakeAccount.name,
       username: username,
       email: fakeAccount.email,
