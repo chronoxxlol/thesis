@@ -159,6 +159,7 @@ async function getCampaign(req, res) {
   }
 }
 
+
 async function deleteCampaign(req, res) {
   let accountId = req.query.account_id;
   const connectionGlobal = createConnection("global");
